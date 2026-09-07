@@ -19,17 +19,16 @@ PDFラベルメーカー — 個人利用向けの宛名ラベルPDF生成Webア
 
 ## 今すぐ使う
 
-`mockup/index.html` は単一ファイルで完結した動作確認版で、入力からPDF生成までひと通り実際に使えます。
+以下のURLをブラウザで開くだけで、ダウンロードやインストールなしにそのまま使えます（GitHub Pagesで公開）。
 
-```bash
-# ブラウザで直接開くだけ（ビルドや起動は不要）
-mockup/index.html
-```
+**https://ynagata6158.github.io/label-maker/**
+
+`docs/index.html` は単一ファイルで完結した動作確認版で、入力からPDF生成までひと通り実際に使えます。ローカルにファイルを持ってきて `docs/index.html` をブラウザで直接開いても同様に動作します。
 
 ## 開発状況
 
-- **`mockup/index.html`**：動作する単一HTML版。上記の機能はすべて実装・動作確認済み。
-- **`src/`**：CLAUDE.mdで定めた技術仕様（React + Vite + TypeScript）に沿った本実装。現在進行中で、`mockup/index.html` の内容をReactコンポーネントとして移植する予定。
+- **`docs/index.html`**：動作する単一HTML版。上記の機能はすべて実装・動作確認済みで、GitHub Pagesの公開元としても使用。
+- **`src/`**：CLAUDE.mdで定めた技術仕様（React + Vite + TypeScript）に沿った本実装。現在進行中で、`docs/index.html` の内容をReactコンポーネントとして移植する予定。
 
 ## セットアップ（本実装 / src/）
 

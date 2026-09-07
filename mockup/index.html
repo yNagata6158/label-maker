@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDFラベルメーカー</title>
+<style>
+  body {
+    font-family: sans-serif;
+    max-width: 480px;
+    margin: 40px auto;
+    padding: 0 16px;
+    color: #222;
+  }
+  h1 {
+    font-size: 20px;
+    margin-bottom: 24px;
+  }
+  fieldset {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    padding: 12px 16px 16px;
+  }
+  legend {
+    font-weight: bold;
+    padding: 0 6px;
+  }
+  label {
+    display: block;
+    margin-top: 12px;
+    font-size: 14px;
+  }
+  label:first-of-type {
+    margin-top: 4px;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="file"] {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 4px;
+    padding: 6px 8px;
+    font-size: 14px;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+  }
+  .row {
+    display: flex;
+    gap: 12px;
+  }
+  .row > div {
+    flex: 1;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #1d4ed8;
+  }
+</style>
+</head>
+<body>
+
+<h1>PDFラベルメーカー</h1>
+
+<form>
+
+  <fieldset>
+    <legend>宛先情報</legend>
+
+    <label for="name">氏名（必須）</label>
+    <input type="text" id="name" name="name" required>
+
+    <label for="zip">郵便番号（必須）</label>
+    <input type="text" id="zip" name="zip" required>
+
+    <label for="address">住所（必須）</label>
+    <input type="text" id="address" name="address" required>
+
+    <label for="company">会社名（任意）</label>
+    <input type="text" id="company" name="company">
+  </fieldset>
+
+  <fieldset>
+    <legend>CSVインポート</legend>
+
+    <label for="csv">CSVファイルを選択</label>
+    <input type="file" id="csv" name="csv" accept=".csv">
+  </fieldset>
+
+  <fieldset>
+    <legend>用紙・ラベル設定</legend>
+
+    <label>用紙の余白（mm）</label>
+    <div class="row">
+      <div>
+        <label for="marginTop">上</label>
+        <input type="number" id="marginTop" name="marginTop" value="10">
+      </div>
+      <div>
+        <label for="marginBottom">下</label>
+        <input type="number" id="marginBottom" name="marginBottom" value="10">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="marginLeft">左</label>
+        <input type="number" id="marginLeft" name="marginLeft" value="10">
+      </div>
+      <div>
+        <label for="marginRight">右</label>
+        <input type="number" id="marginRight" name="marginRight" value="10">
+      </div>
+    </div>
+
+    <label>ラベルサイズ（mm）</label>
+    <div class="row">
+      <div>
+        <label for="labelWidth">幅</label>
+        <input type="number" id="labelWidth" name="labelWidth" value="70">
+      </div>
+      <div>
+        <label for="labelHeight">高さ</label>
+        <input type="number" id="labelHeight" name="labelHeight" value="30">
+      </div>
+    </div>
+
+    <label for="labelGap">ラベル間の余白（mm）</label>
+    <input type="number" id="labelGap" name="labelGap" value="2">
+
+    <label for="fontSize">文字サイズ（pt）</label>
+    <input type="number" id="fontSize" name="fontSize" value="10">
+  </fieldset>
+
+  <button type="button" id="createPdfBtn">PDFを作成</button>
+
+</form>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  // A4用紙サイズ（mm）
+  const PAGE_WIDTH_MM = 210;
+  const PAGE_HEIGHT_MM = 297;
+
+  // ラベル画像を描画する解像度（1mmあたりの画素数。300dpi相当）
+  const PX_PER_MM = 300 / 25.4;
+
+  document.getElementById('createPdfBtn').addEventListener('click', () => {
+    const name = document.getElementById('name').value.trim();
+    const zip = document.getElementById('zip').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const company = document.getElementById('company').value.trim();
+
+    if (!name || !zip || !address) {
+      alert('氏名・郵便番号・住所は必須項目です。入力してください。');
+      return;
+    }
+
+    const marginTop = parseFloat(document.getElementById('marginTop').value) || 0;
+    const marginBottom = parseFloat(document.getElementById('marginBottom').value) || 0;
+    const marginLeft = parseFloat(document.getElementById('marginLeft').value) || 0;
+    const marginRight = parseFloat(document.getElementById('marginRight').value) || 0;
+    const labelWidth = parseFloat(document.getElementById('labelWidth').value) || 0;
+    const labelHeight = parseFloat(document.getElementById('labelHeight').value) || 0;
+    const labelGap = parseFloat(document.getElementById('labelGap').value) || 0;
+    const fontSize = parseFloat(document.getElementById('fontSize').value) || 10;
+
+    if (labelWidth <= 0 || labelHeight <= 0) {
+      alert('ラベルサイズ（幅・高さ）を正しく入力してください。');
+      return;
+    }
+
+    const grid = calculateGrid(marginTop, marginBottom, marginLeft, marginRight, labelWidth, labelHeight, labelGap);
+    if (grid.cols === 0 || grid.rows === 0) {
+      alert('この設定では用紙にラベルを1枚も配置できません。余白やラベルサイズを見直してください。');
+      return;
+    }
+
+    const labelImage = createLabelImage(name, zip, address, company, labelWidth, labelHeight, fontSize);
+    buildPdf(labelImage, labelWidth, labelHeight, labelGap, grid);
+  });
+
+  // 用紙設定から、A4に配置できる行数・列数と、シート中央に配置するためのオフセットを計算する
+  function calculateGrid(marginTop, marginBottom, marginLeft, marginRight, labelWidth, labelHeight, labelGap) {
+    const usableWidth = PAGE_WIDTH_MM - marginLeft - marginRight;
+    const usableHeight = PAGE_HEIGHT_MM - marginTop - marginBottom;
+
+    const cols = Math.max(0, Math.floor((usableWidth + labelGap) / (labelWidth + labelGap)));
+    const rows = Math.max(0, Math.floor((usableHeight + labelGap) / (labelHeight + labelGap)));
+
+    const gridWidth = cols * labelWidth + Math.max(0, cols - 1) * labelGap;
+    const gridHeight = rows * labelHeight + Math.max(0, rows - 1) * labelGap;
+
+    const offsetX = marginLeft + (usableWidth - gridWidth) / 2;
+    const offsetY = marginTop + (usableHeight - gridHeight) / 2;
+
+    return { cols, rows, offsetX, offsetY };
+  }
+
+  // 1枚分のラベル内容をCanvasに描画し、PNG画像（Data URL）として返す
+  function createLabelImage(name, zip, address, company, widthMm, heightMm, fontSizePt) {
+    const widthPx = Math.round(widthMm * PX_PER_MM);
+    const heightPx = Math.round(heightMm * PX_PER_MM);
+    const paddingPx = Math.round(2 * PX_PER_MM);
+    const fontSizePx = Math.round(fontSizePt * (300 / 72));
+    const fontFamily = '"Yu Gothic", "Hiragino Sans", "Noto Sans JP", sans-serif';
+
+    const canvas = document.createElement('canvas');
+    canvas.width = widthPx;
+    canvas.height = heightPx;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, widthPx, heightPx);
+
+    ctx.fillStyle = '#000';
+    ctx.textBaseline = 'top';
+    ctx.font = fontSizePx + 'px ' + fontFamily;
+
+    const maxTextWidth = widthPx - paddingPx * 2;
+    const lines = [];
+    lines.push('〒' + zip);
+    lines.push(...wrapText(ctx, address, maxTextWidth));
+    if (company) {
+      lines.push(...wrapText(ctx, company, maxTextWidth));
+    }
+    lines.push(...wrapText(ctx, name, maxTextWidth));
+
+    const lineHeightPx = fontSizePx * 1.4;
+    let y = paddingPx;
+    for (const line of lines) {
+      ctx.fillText(line, paddingPx, y, maxTextWidth);
+      y += lineHeightPx;
+    }
+
+    return canvas.toDataURL('image/png');
+  }
+
+  // 日本語はスペースで区切られないため、1文字ずつ幅を測って折り返す
+  function wrapText(ctx, text, maxWidth) {
+    const lines = [];
+    let current = '';
+    for (const ch of text) {
+      const test = current + ch;
+      if (current !== '' && ctx.measureText(test).width > maxWidth) {
+        lines.push(current);
+        current = ch;
+      } else {
+        current = test;
+      }
+    }
+    if (current) {
+      lines.push(current);
+    }
+    return lines;
+  }
+
+  // ラベル画像をA4シート上のグリッドに配置してPDFを生成し、ダウンロードする
+  function buildPdf(labelImage, labelWidth, labelHeight, labelGap, grid) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    for (let r = 0; r < grid.rows; r++) {
+      for (let c = 0; c < grid.cols; c++) {
+        const x = grid.offsetX + c * (labelWidth + labelGap);
+        const y = grid.offsetY + r * (labelHeight + labelGap);
+        doc.addImage(labelImage, 'PNG', x, y, labelWidth, labelHeight);
+      }
+    }
+
+    doc.save('labels.pdf');
+  }
+</script>
+
+</body>
+</html>
